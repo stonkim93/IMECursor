@@ -44,7 +44,7 @@
 
 ```bash
 # 저장소 클론
-git clone [https://github.com/유저네임/IMECursor.git](https://github.com/유저네임/IMECursor.git)
+git clone [https://github.com/stonkim93/IMECursor.git](https://github.com/유저네임/IMECursor.git)
 
 # 빌드 및 실행
 dotnet build
