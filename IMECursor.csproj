@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWindowsForms>true</UseWindowsForms>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Remove="BACKUP1\**" />
+	  <Compile Remove="Backup1_포인터색상변화\**" />
+	  <Compile Remove="Backup2_엑셀_작은원\**" />
+	  <Compile Remove="Backup3_아래한글\**" />
+	  <EmbeddedResource Remove="BACKUP1\**" />
+	  <EmbeddedResource Remove="Backup1_포인터색상변화\**" />
+	  <EmbeddedResource Remove="Backup2_엑셀_작은원\**" />
+	  <EmbeddedResource Remove="Backup3_아래한글\**" />
+	  <None Remove="BACKUP1\**" />
+	  <None Remove="Backup1_포인터색상변화\**" />
+	  <None Remove="Backup2_엑셀_작은원\**" />
+	  <None Remove="Backup3_아래한글\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="README.txt" />
+	</ItemGroup>
+
+</Project>
