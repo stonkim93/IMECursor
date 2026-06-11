@@ -35,6 +35,8 @@
 
 ### 실행 파일 다운로드
 오른쪽의 **[Releases]** 탭에서 최신 버전의 `.zip` 파일을 다운로드한 뒤, 압축을 풀고 `IMECursor.exe`를 실행하시면 즉시 시스템 트레이에 상주하며 작동합니다.
+IMECursor.zip --> .net8 설치된 윈도우용 (파일 사이즈 작음)
+IMECursor_with_dot_net8.zip  --> .net8 미설치 윈도우용 (파일 사이즈 큼)
 
 ### 개발 환경 및 빌드 (Requirements)
 * **OS:** Windows 10 / 11
