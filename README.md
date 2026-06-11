@@ -1,8 +1,6 @@
 # 🌐 IMECursor Color Changer
 
-**IMECursor**는 윈도우 환경에서 현재 입력 중인 언어와 대소문자 상태(IME)를 마우스 포인터와 트레이 아이콘의 색상으로 직관적으로 알려주는 고성능 유틸리티입니다. 특히 문서 작업이 많은 환경(Excel, 아래한글)에서는 포인터 하단에 미니 인디케이터(작은 원)를 추가로 표시하여 작업 효율을 극대화합니다.
-
-영어, 한국어뿐만 아니라 전문적인 언어 연구 및 번역을 위한 **팔리어(Pāḷi)** 입력 상태까지 완벽하게 지원합니다.
+**IMECursor**는 윈도우 환경에서 현재 입력 중인 언어(영어, 한글, Pali어)와 대소문자 상태(IME)를 마우스 포인터와 트레이 아이콘의 색상으로 직관적으로 알려주는 고성능 유틸리티입니다. 특히 문서 작업이 많은 환경(Excel, 아래한글)에서는 포인터 하단에 미니 인디케이터(작은 원)를 추가로 표시하여 작업 효율을 극대화합니다.
 
 \---
 
@@ -51,14 +49,13 @@
 
 * **OS:** Windows 10 / Windows 11 (64-bit)
 * **Runtime:** [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) 이상
-* Language:\*\* C# 12
-* IDE:\*\* Visual Studio 2022
+* **Language:**\*\* C# 12
+* **IDE:** \*\* Visual Studio 2022
 
 ### ⚙️실행 방법
 
-1. 본 레포지토리를 클론합니다.
-
-```bash git clone" \[https://github.com/YourUsername/IMECursor.git](https://github.com/YourUsername/IMECursor.git)
+1\. 본 레포지토리를 클론합니다.
+"bash git clone" \[https://github.com/YourUsername/IMECursor.git](https://github.com/YourUsername/IMECursor.git)
 
 2\. Visual Studio 2022에서 IMECursor.csproj를 열고 빌드(Release 모드 추천)합니다.
 
@@ -66,55 +63,31 @@
 
 \*\* 중복 실행 방지(Mutex)가 적용되어 있어 안전하게 백그라운드에서 상주합니다.
 
-
-
 \# POWERSHELL 실행후 입력하여 배포판 만들기 (.net runtime 전체 포함된, self-contained)
-
 D:\\FORTRAN\\IMECursor> dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true
 
-
-
 \# POWERSHELL 실행후 입력하여 배포판 만들기 (framework-dependent, Windows 10/11에는 .NET 8이 기본 내장됨)
-
 D:\\FORTRAN\\IMECursor> dotnet publish -c Release --self-contained false /p:PublishSingleFile=true
 
-
-
 \### 실행 파일 다운로드
-
 오른쪽의 \*\*\[Releases]\*\* 탭에서 최신 버전의 `.zip` 파일을 다운로드한 뒤, 압축을 풀고 `IMECursor.exe`를 실행하시면 즉시 시스템 트레이에 상주하며 작동합니다.
 
 IMECursor.zip --> .net8 설치된 윈도우용 (파일 사이즈 작음)
-
 IMECursor\_with\_dot\_net8.zip  --> .net8 미설치 윈도우용 (파일 사이즈 큼)
-
-
 
 ### ⚙️사용 팁
 
 트레이 메뉴 기능: 시스템 트레이의 아이콘을 우클릭(또는 좌클릭)하면 현재 상태 브리핑 및 엑셀/한글 화면에서 '작은 원 표시 여부'를 실시간으로 끄고 켤 수 있는 토글 옵션을 제공합니다.
 
-
-
 \### Windows US+Pali(unicode) 키보드 설치방법
-
 https://www.tipitaka.org/keyboard.html
-
 US+Pali Unicode 입력기에서 한글-Pali 변경 : control + shift
 
-
-
 \### 한글2020에서 윈도우 MS IME 사용하기
-
 한글 2020 실행 후 상단 메뉴에서 도구 ➔ 글자판 ➔ 글자판 바꾸기를 클릭합니다. (단축키: Alt + F2)
-
 '글자판 바꾸기' 창에서 현재 글자판을 한국어 대신 윈도우 입력기로 변경합니다.
-
 설정을 저장하고 나오면, 이제 HWP에서도 커서 프로그램이 MS IME의 한/영 상태를 정확하게 감지하여 색상을 실시간으로 변경합니다.
-
-
 
 ### ⚙️라이선스(License)
 
 이 프로젝트는 MIT License에 따라 자유롭게 수정 및 배포할 수 있습니다.
-
