@@ -2,30 +2,61 @@
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<TargetFramework>net8.0-windows</TargetFramework>
+		<TargetFramework>net10.0-windows</TargetFramework>
 		<UseWindowsForms>true</UseWindowsForms>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<ApplicationIcon>IMECursor_WS.ico</ApplicationIcon>
+		<Optimize>true</Optimize>
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Compile Remove="BACKUP1\**" />
-	  <Compile Remove="Backup1_포인터색상변화\**" />
-	  <Compile Remove="Backup2_엑셀_작은원\**" />
-	  <Compile Remove="Backup3_아래한글\**" />
-	  <EmbeddedResource Remove="BACKUP1\**" />
-	  <EmbeddedResource Remove="Backup1_포인터색상변화\**" />
-	  <EmbeddedResource Remove="Backup2_엑셀_작은원\**" />
-	  <EmbeddedResource Remove="Backup3_아래한글\**" />
-	  <None Remove="BACKUP1\**" />
-	  <None Remove="Backup1_포인터색상변화\**" />
-	  <None Remove="Backup2_엑셀_작은원\**" />
-	  <None Remove="Backup3_아래한글\**" />
+		<Compile Remove="Backup1\**" />
+		<Compile Remove="Backup1_포인터색상변화\**" />
+		<Compile Remove="Backup2_엑셀_작은원\**" />
+		<Compile Remove="Backup3_아래한글\**" />
+		<Compile Remove="Backup4_최종_claude\**" />
+		<Compile Remove="Backup4_최종_gemini\**" />
+		<Compile Remove="Backup5_Final\**" />
+		<Compile Remove="Backup6_net10\**" />
+		<Compile Remove="Backup6_net10_크기조절포함\**" />
+		<Compile Remove="Backup_dotnet10\**" />
+		<Compile Remove="Backup_dotnet8\**" />
+		<Compile Remove="ICON\**" />
+		<EmbeddedResource Remove="Backup1\**" />
+		<EmbeddedResource Remove="Backup1_포인터색상변화\**" />
+		<EmbeddedResource Remove="Backup2_엑셀_작은원\**" />
+		<EmbeddedResource Remove="Backup3_아래한글\**" />
+		<EmbeddedResource Remove="Backup4_최종_claude\**" />
+		<EmbeddedResource Remove="Backup4_최종_gemini\**" />
+		<EmbeddedResource Remove="Backup5_Final\**" />
+		<EmbeddedResource Remove="Backup6_net10\**" />
+		<EmbeddedResource Remove="Backup6_net10_크기조절포함\**" />
+		<EmbeddedResource Remove="Backup_dotnet10\**" />
+		<EmbeddedResource Remove="Backup_dotnet8\**" />
+		<EmbeddedResource Remove="ICON\**" />
+		<None Remove="Backup1\**" />
+		<None Remove="Backup1_포인터색상변화\**" />
+		<None Remove="Backup2_엑셀_작은원\**" />
+		<None Remove="Backup3_아래한글\**" />
+		<None Remove="Backup4_최종_claude\**" />
+		<None Remove="Backup4_최종_gemini\**" />
+		<None Remove="Backup5_Final\**" />
+		<None Remove="Backup6_net10\**" />
+		<None Remove="Backup6_net10_크기조절포함\**" />
+		<None Remove="Backup_dotnet10\**" />
+		<None Remove="Backup_dotnet8\**" />
+		<None Remove="ICON\**" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Remove="README.txt" />
+		<None Remove="README.txt" />
+		<None Remove="README_.md" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="IMECursor_WS.ico" />
 	</ItemGroup>
 
 </Project>
