@@ -55,7 +55,7 @@
 ### ⚙️실행 방법
 
 1\. 본 레포지토리를 클론합니다.
-"bash git clone" \[https://github.com/YourUsername/IMECursor.git](https://github.com/YourUsername/IMECursor.git)
+bash git clone \[https://github.com/stonkim93/IMECursor.git](https://github.com/YourUsername/IMECursor.git)
 
 2\. Visual Studio 2022에서 IMECursor.csproj를 열고 빌드(Release 모드 추천)합니다.
 
