@@ -1,9 +1,5 @@
 # 🌐 IMECursor Color Changer
 
-\[!\[Platform](https://img.shields.io/badge/platform-Windows-blue.svg)]()
-\[!\[Framework](https://img.shields.io/badge/.NET-8.0--windows-purple.svg)]()
-\[!\[Language](https://img.shields.io/badge/language-C%23-green.svg)]()
-
 **IMECursor**는 윈도우 환경에서 현재 입력 중인 언어와 대소문자 상태(IME)를 마우스 포인터와 트레이 아이콘의 색상으로 직관적으로 알려주는 고성능 유틸리티입니다. 특히 문서 작업이 많은 환경(Excel, 아래한글)에서는 포인터 하단에 미니 인디케이터(작은 원)를 추가로 표시하여 작업 효율을 극대화합니다.
 
 영어, 한국어뿐만 아니라 전문적인 언어 연구 및 번역을 위한 **팔리어(Pāḷi)** 입력 상태까지 완벽하게 지원합니다.
