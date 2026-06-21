@@ -13,7 +13,7 @@
 </div>
 
 
-**IMECursor**는 윈도우 환경에서 현재 입력 중인 언어와 대소문자 상태(IME)를 **마우스 포인터**와 **트레이 아이콘**의 색상 변화를 이용하여 직관적으로 알려주는 유틸리티 앱입니다. 특히 자체적인 포인터를 사용하는 앱(Excel, 아래한글)에서는 포인터 우측 하단에 작은 원를 추가로 표시하여 입력 상태를 확인합니다.
+**IMECursor**는 윈도우 환경에서 현재 입력 중인 언어와 대소문자 상태(IME)를 **마우스 포인터**와 **트레이 아이콘**의 색상 변화를 이용하여 직관적으로 알려주는 고성능 유틸리티 앱입니다. 특히 자체적인 포인터를 사용하는 앱(Excel, 아래한글)에서는 포인터 우측 하단에 작은 원를 추가로 표시하여 입력 상태를 확인합니다.
 
 영어, 한국어 뿐만 아니라 **빨리어(Pāḷi)** 입력 상태까지 완벽하게 지원합니다.
 
@@ -27,23 +27,23 @@
 
 <div align="center">
 
-| 입력 상태 (IME State) | 포인터/아이콘 색상 | 트레이 글자 |
+| 입력 상태 (IME State) | 포인터/아이콘 색상 | 트레이 문자 |
 |:---|:---|:---:|
 | **영어 소문자** (English Lower) | $\color{gray}\Large\blacktriangle$ White | $\color{gray}\large\boldsymbol{e}$|
 | **영어 대문자** (English Upper) | $\color{DeepSkyBlue}\Large\blacktriangle$ DeepSkyBlue | $\color{deepskyblue}\large\textbf{E}$|
-| **한국어** (Hangul) | $\color{red}\Large\blacktriangle$ Red | $\color{red}\large\textbf{K}$|
+| **한국어** (Korean) | $\color{red}\Large\blacktriangle$ Red | $\color{red}\large\textbf{K}$|
 | **빨리어 소문자** (Pāḷi Lower) | $\color{orange}\Large\blacktriangle$ Orange | $\color{orange}\large\boldsymbol{p}$|
 | **빨리어 대문자** (Pāḷi Upper) | $\color{lime}\Large\blacktriangle$ Lime | $\color{lime}\large\textbf{P}$|
 
 </div>
 
-### 2️⃣ 엑셀과 한글에서 포인터 하단에 작은원(mini indicator) 표시하기
+### 2️⃣ 엑셀과 아래한글에서 포인터 하단에 작은원(mini indicator) 표시하기
 
-- 마우스 포인터를 자체적으로 관리하는 앱(엑셀, 한글)에서는 포인터 우측 하단에 '작은 원'을 생성하고 입력상태에 따라 작은 원의 색상을 변경합니다.
+- 마우스 포인터를 자체적으로 관리하는 앱(엑셀, 아래한글)에서는 포인터 우측 하단에 '작은 원'을 생성하고 입력상태에 따라 작은 원의 색상을 변경합니다.
 
     ⚠️ Microsoft Excel (`excel.exe`)의 셀 위에서는 포인터가 엑셀이 자체 관리하는 CROSS 형태로 바뀌고 색상 변경이 어렵다.
 
-    ⚠️ 한글과컴퓨터 아래한글 (`hwp.exe`)의 텍스트 입력창 안에서는 포인터가 한글이 자체 관리하는 I-BEAM 형태로 바뀌고 색상 변경이 어렵다.
+    ⚠️ 한글과컴퓨터 아래한글 (`hwp.exe`)의 텍스트 입력창 안에서는 포인터가 아래한글이 자체 관리하는 I-BEAM 형태로 바뀌고 색상 변경이 어렵다.
 
 - 시스템 트레이의 아이콘을 **우클릭**(또는 좌클릭)하면, 1) 현재 입력상태 표시, 2) **엑셀/한글 작은원 표시** 활성화 옵션, 3) 종료(Exit) 버튼을 제공합니다.
 
@@ -56,15 +56,15 @@
 
 ## 💡 사용팁 (Tips)
 
-### 1️⃣ 빨리어(Pali) 키보드 설치하고 사용하기
+### 1️⃣ 빨리어(Pāḷi) 키보드 설치하고 사용하기
 
 * Windows US+Pali(Unicode) 키보드 설치 방법 : `https://www.tipitaka.org/keyboard.html`
 
 * 한국어(MS IME) ↔ Pali어 빠른 전환 : <kbd>Ctrl</kbd> + <kbd>Shift</kbd>
 
-* 자판 목록에서 순환적으로 Pali어 선택하기 : <kbd>WIN</kbd> + <kbd>Space</kbd>
+* 자판 목록에서 순환적으로 자판 선택 : <kbd>WIN</kbd> + <kbd>Space</kbd>
 
-* Pali어 글자배열 및 입력방법 : <kbd>한/영키(Right Alt)</kbd> + <kbd> (a, s, d), (G, H), (l, m, n), (r, t, Y, u, i) </kbd>
+* Pali어 문자배열 및 입력방법 : <kbd>한/영키(Right Alt)</kbd> + <kbd> (a, s, d), (G, H), (l, m, n), (r, t, Y, u, i) </kbd>
 
 <div align="center">
 
@@ -73,12 +73,12 @@
 </div>
 
 
-### 2️⃣ 한글 2020에서 윈도우 MS IME 사용하기
+### 2️⃣ 아래한글에서 윈도우 MS IME 사용하기
 
 > 📌 [TIP]
-> 한글과컴퓨터의 자체 입력기 대신 MicroSoft IME를 사용하도록 전환하면, 한글에서도 이 프로그램이 입력 상태를 정확히 보여줍니다.
+> 한글과컴퓨터의 자체 입력기 대신 MicroSoft IME를 사용하도록 전환하면, 아래한글에서도 이 프로그램이 입력 상태를 정확히 보여줍니다.
 
-* 한글 2020 실행 후 상단 메뉴에서 `도구 ➔ 글자판 ➔ 글자판 바꾸기`를 클릭합니다. (단축키: <kbd>Alt</kbd> + <kbd>F2</kbd>)
+* 아래한글 실행 후 상단 메뉴에서 `도구 ➔ 글자판 ➔ 글자판 바꾸기`를 클릭합니다. (단축키: <kbd>Alt</kbd> + <kbd>F2</kbd>)
 * **글자판 바꾸기** 창에서 현재 글자판 종류를 **한국어** 대신 **윈도우 입력기**로 변경합니다.
 * **글자판 자동 변경**을 해제하여 항상 윈도우 설정을 따르도록 저장하고 나옵니다.
 * 트레이 아이콘을 클릭하여, **엑셀/한글 작은원 표시**가 체크되어 있으면, 입력상태를 시각적으로 구분하기 쉽습니다.
