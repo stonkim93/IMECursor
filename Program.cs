@@ -13,6 +13,88 @@ using Microsoft.Win32;
 namespace IMECursor
 {
     // =========================================================================
+    // ⚙️ [사용자 커스텀 환경 설정] (AppConfig)
+    // 아래의 값들만 변경하면 프로그램 전체의 디자인, 속도, 타겟 프로그램이 변경됩니다.
+    // =========================================================================
+    internal static class AppConfig
+    {
+        // 1) 타이머 감지 주기 (Polling Interval)
+        // 기본값: 15 (15ms, 초당 약 66회). 배터리 절약이 필요하면 25~30으로 늘리세요.
+        public const int PollingInterval = 15;
+
+        // 2) 미니 인디케이터를 띄울 타겟 프로그램 지정 (반드시 소문자로 입력)
+        // 예: MS Word를 추가하려면 "winword"를 배열에 추가합니다.
+        public static readonly string[] IndicatorTargetApps = { "excel", "hwp" };
+
+        // 3) 미니 인디케이터 디자인 및 위치
+        public const float IndicatorSize = 10.0f; // 작은 원의 크기 (기본 10.0, 최대 14.0)
+        public const int IndicatorOffsetX = 6;    // 마우스 포인터 끝점에서 X축 떨어진 거리
+        public const int IndicatorOffsetY = 24;   // 마우스 포인터 끝점에서 Y축 떨어진 거리
+
+        // 4) 확장 언어 (Custom Language) 식별 ID (기존 Pali어 대체용)
+        // - 상위 16비트(Device ID)를 쓰는 특수 자판 (예: Pali어 = 0xF0C0)
+        public const ushort CustomLang_DeviceId = 0xF0C0;
+        // - 하위 16비트(LANGID)를 쓰는 일반 국가 자판 (예: 중국어 간체 = 0x0804, 프랑스어 = 0x040C)
+        // 일반 자판을 감지하려면 0x0000 대신 해당 코드를 입력하세요.
+        public const ushort CustomLang_LangId = 0x0000;
+
+        // 5) 상태별 색상 및 트레이 텍스트 테마 설정 구조체
+        public struct Theme
+        {
+            public Color PointerColor;   // 마우스 포인터 및 작은 원의 색상
+            public Color TrayBgColor;    // 트레이 아이콘의 배경 사각형 색상
+            public Color TrayTextColor;  // 트레이 아이콘의 텍스트 색상
+            public string TrayText;      // 트레이 아이콘에 표시될 1글자
+            public string Description;   // 우클릭 메뉴 및 마우스 오버 시 표시될 설명
+        }
+
+        // 🎨 테마 딕셔너리 (여기서 모든 색상과 텍스트를 일괄 제어합니다)
+        public static readonly Dictionary<ImeState.State, Theme> Themes = new()
+        {
+            [ImeState.State.EnglishLower] = new Theme
+            {
+                PointerColor = Color.White,
+                TrayBgColor = Color.Black,
+                TrayTextColor = Color.DeepSkyBlue,
+                TrayText = "e",
+                Description = "영어 소문자 [e]"
+            },
+            [ImeState.State.EnglishUpper] = new Theme
+            {
+                PointerColor = Color.DeepSkyBlue,
+                TrayBgColor = Color.Black,
+                TrayTextColor = Color.DeepSkyBlue,
+                TrayText = "E",
+                Description = "영어 대문자 [E]"
+            },
+            [ImeState.State.Hangul] = new Theme
+            {
+                PointerColor = Color.Red,
+                TrayBgColor = Color.Red,
+                TrayTextColor = Color.White,
+                TrayText = "K",
+                Description = "한국어 [K]"
+            },
+            [ImeState.State.CustomLangLower] = new Theme
+            {
+                PointerColor = Color.Orange,
+                TrayBgColor = Color.Black,
+                TrayTextColor = Color.Orange,
+                TrayText = "p",
+                Description = "확장언어 소문자 [p]"
+            },
+            [ImeState.State.CustomLangUpper] = new Theme
+            {
+                PointerColor = Color.Lime,
+                TrayBgColor = Color.Black,
+                TrayTextColor = Color.Lime,
+                TrayText = "P",
+                Description = "확장언어 대문자 [P]"
+            }
+        };
+    }
+
+    // =========================================================================
     // 1. 프로그램 진입점 (Main)
     // =========================================================================
     internal static class Program
@@ -20,23 +102,19 @@ namespace IMECursor
         [STAThread]
         static void Main()
         {
-            // Mutex를 활용하여 프로세스 중복 실행 차단
             using Mutex mutex = new Mutex(true, "IMECursorColor_SingleInstance", out bool first);
-
             if (!first)
             {
                 MessageBox.Show("이미 실행 중입니다.", "IME Cursor", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            // 프로그램 예기치 않은 종료 시 OS 기본 마우스 커서로 복구하는 안전망
             AppDomain.CurrentDomain.UnhandledException += (s, e) => MainForm.RestoreDefaults();
             AppDomain.CurrentDomain.ProcessExit += (s, e) => MainForm.RestoreDefaults();
 
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-
             Application.Run(new MainForm());
         }
     }
@@ -46,25 +124,17 @@ namespace IMECursor
     // =========================================================================
     internal class MainForm : Form
     {
-        // 입력 상태별 마우스 커서 및 트레이 아이콘 자원(GDI 핸들)을 보관하는 구조체
         private class StateAssets : IDisposable
         {
             public IntPtr Arrow, IBeam;
-            //public IntPtr Cross, SizeWE, SizeNS, SizeNWSE, SizeNESW, SizeAll;
             public Icon TrayIcon = null!;
             public Color DotColor;
+            public string Description = "";
 
             public void Dispose()
             {
-                // 관리되지 않는 Win32 자원의 명시적 메모리 해제
                 if (Arrow != IntPtr.Zero) NativeMethods.DestroyCursor(Arrow);
                 if (IBeam != IntPtr.Zero) NativeMethods.DestroyCursor(IBeam);
-                //if (Cross != IntPtr.Zero) NativeMethods.DestroyCursor(Cross);
-                //if (SizeWE != IntPtr.Zero) NativeMethods.DestroyCursor(SizeWE);
-                //if (SizeNS != IntPtr.Zero) NativeMethods.DestroyCursor(SizeNS);
-                //if (SizeNWSE != IntPtr.Zero) NativeMethods.DestroyCursor(SizeNWSE);
-                //if (SizeNESW != IntPtr.Zero) NativeMethods.DestroyCursor(SizeNESW);
-                //if (SizeAll != IntPtr.Zero) NativeMethods.DestroyCursor(SizeAll);
                 TrayIcon?.Dispose();
             }
         }
@@ -80,12 +150,10 @@ namespace IMECursor
         private ImeState.State _lastState = (ImeState.State)(-1);
         private Color _currentDotColor = Color.White;
 
-        // 동기화 추적을 위한 변수
         private bool _showMiniIndicator = false;
         private IntPtr _lastForegroundHwnd = IntPtr.Zero;
         private IntPtr _currentHwnd = IntPtr.Zero;
 
-        // 인디케이터(작은 원) 렌더링용 GDI 변수
         private IntPtr _indicatorScreenDc = IntPtr.Zero;
         private IntPtr _indicatorMemDc = IntPtr.Zero;
         private IntPtr _indicatorHBitmap = IntPtr.Zero;
@@ -100,26 +168,19 @@ namespace IMECursor
         {
             biSize = s_bmiSize,
             biWidth = 16,
-            biHeight = -16, // 음수 값은 Top-Down DIB를 의미하여 렌더링 속도 최적화
+            biHeight = -16,
             biPlanes = 1,
             biBitCount = 32,
             biCompression = 0
         };
 
-        // Layered 윈도우(클릭 투과 및 투명화) 속성 적용
         protected override CreateParams CreateParams
         {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x00000008 | 0x00000020 | 0x00000080 | 0x08000000 | 0x00080000;
-                return cp;
-            }
+            get { CreateParams cp = base.CreateParams; cp.ExStyle |= 0x00000008 | 0x00000020 | 0x00000080 | 0x08000000 | 0x00080000; return cp; }
         }
 
         public MainForm()
         {
-            // 폼을 화면 밖으로 숨김 처리
             this.Size = new Size(16, 16);
             this.FormBorderStyle = FormBorderStyle.None;
             this.ShowInTaskbar = false;
@@ -141,35 +202,22 @@ namespace IMECursor
             _contextMenu.Items.Add(new ToolStripSeparator());
             _contextMenu.Items.Add(new ToolStripMenuItem("종료(Exit)", null, (s, e) => this.Close()));
 
-            _trayIcon = new()
-            {
-                Text = "IME Cursor Color Changer",
-                ContextMenuStrip = _contextMenu,
-                Visible = true
-            };
+            _trayIcon = new() { Text = "IME Cursor", ContextMenuStrip = _contextMenu, Visible = true };
             _trayIcon.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) { NativeMethods.SetForegroundWindow(this.Handle); _contextMenu.Show(Cursor.Position); } };
 
             SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
-            // 프로그램 시작 시 5가지 테마의 그래픽 자원을 1회 선행 렌더링(캐싱)
             BakeAllAssets();
 
-            // 💡 [커스텀 가이드 3: 타이머 감지 주기 (Polling Interval) 조정]
-            // Interval = 15는 15ms마다(초당 약 66회) 입력 상태를 검사함을 의미합니다.
-            // 노트북 배터리나 CPU 점유율이 우려된다면 이 값을 25~30으로 늘리시면 됩니다.
-            _stateTimer = new() { Interval = 15 };
+            // 설정 클래스(AppConfig)에서 타이머 주기를 가져와 동적으로 적용합니다.
+            _stateTimer = new() { Interval = AppConfig.PollingInterval };
             _stateTimer.Tick += StateTimer_Tick;
         }
 
         private void OnDisplaySettingsChanged(object? sender, EventArgs e)
         {
-            if (this.InvokeRequired)
-            {
-                this.BeginInvoke(new Action(() => OnDisplaySettingsChanged(sender, e)));
-                return;
-            }
-
-            _stateTimer.Stop(); // 자원을 리셋하는 동안 스레드 충돌 방지를 위해 타이머 정지
+            if (this.InvokeRequired) { this.BeginInvoke(new Action(() => OnDisplaySettingsChanged(sender, e))); return; }
+            _stateTimer.Stop();
             RestoreDefaults();
             BakeAllAssets();
             _stateTimer.Start();
@@ -198,31 +246,17 @@ namespace IMECursor
 
             foreach (ImeState.State state in Enum.GetValues(typeof(ImeState.State)))
             {
-                Color dotColor = GetColorForState(state);
+                // AppConfig.Themes에서 해당 상태의 테마 데이터를 가져옵니다.
+                if (!AppConfig.Themes.TryGetValue(state, out AppConfig.Theme theme)) continue;
+
                 StateAssets assets = new StateAssets
                 {
-                    DotColor = dotColor,
-                    Arrow = CreateDynamicArrowCursor(dotColor, w, h),
-                    IBeam = CreateDynamicIBeamCursor(dotColor, w, h),
-                    //Cross = CreateDynamicCrossCursor(dotColor, w, h),
-                    //SizeWE = CreateDynamicResizeCursor(dotColor, w, h, 0f),
-                    //SizeNS = CreateDynamicResizeCursor(dotColor, w, h, 90f),
-                    //SizeNWSE = CreateDynamicResizeCursor(dotColor, w, h, 45f),
-                    //SizeNESW = CreateDynamicResizeCursor(dotColor, w, h, 135f),
-                    //SizeAll = CreateDynamicSizeAllCursor(dotColor, w, h)
+                    DotColor = theme.PointerColor,
+                    Description = theme.Description,
+                    Arrow = CreateDynamicArrowCursor(theme.PointerColor, w, h),
+                    IBeam = CreateDynamicIBeamCursor(theme.PointerColor, w, h),
+                    TrayIcon = CreateTrayIcon(theme.TrayText, theme.TrayBgColor, theme.TrayTextColor)
                 };
-
-                // 💡 [커스텀 가이드 2-2: 트레이 텍스트 및 배경/글자색 변경]
-                // iconText: 트레이 아이콘에 각인되는 문자열 (E, K, p, P 등)
-                // bgColor: 트레이 아이콘 배경색 (일반적으로 포인터 색상과 맞춤)
-                // txtColor: 트레이 글자색 (배경색이 밝으면 Black, 어두우면 White)
-                string iconText = state switch { ImeState.State.EnglishUpper => "E", ImeState.State.Hangul => "K", ImeState.State.PaliLower => "p", ImeState.State.PaliUpper => "P", _ => "e" };
-                Color bgColor = state switch { ImeState.State.EnglishUpper => Color.Black, ImeState.State.Hangul => Color.Red, ImeState.State.PaliLower => Color.Black, ImeState.State.PaliUpper => Color.Black, _ => Color.Black };
-                Color txtColor = state switch { ImeState.State.EnglishUpper => Color.DeepSkyBlue, ImeState.State.Hangul => Color.White, ImeState.State.PaliLower => Color.Orange, ImeState.State.PaliUpper => Color.Lime, _ => Color.White };
-                //Color bgColor = state switch { ImeState.State.EnglishUpper => Color.DeepSkyBlue, ImeState.State.Hangul => Color.Red, ImeState.State.PaliLower => Color.Orange, ImeState.State.PaliUpper => Color.Lime, _ => Color.Black };
-                //Color txtColor = state switch { ImeState.State.PaliLower or ImeState.State.PaliUpper => Color.Black, _ => Color.White };
-
-                assets.TrayIcon = CreateTrayIcon(iconText, bgColor, txtColor);
                 _assetCache[state] = assets;
             }
 
@@ -232,18 +266,6 @@ namespace IMECursor
             GC.WaitForPendingFinalizers();
         }
 
-        // 💡 [커스텀 가이드 2-1: 입력 상태별 마우스 포인터 및 작은 원 색상 변경]
-        // 원하는 Color로 리턴값을 수정하세요. (예: Color.Blue, Color.FromArgb(255, 175, 0))
-        private Color GetColorForState(ImeState.State state) => state switch
-        {
-            ImeState.State.EnglishLower => Color.White,
-            ImeState.State.EnglishUpper => Color.DeepSkyBlue,
-            ImeState.State.Hangul => Color.Red,
-            ImeState.State.PaliLower => Color.Orange,
-            ImeState.State.PaliUpper => Color.Lime,
-            _ => Color.White
-        };
-
         private void StateTimer_Tick(object? sender, EventArgs e)
         {
             IntPtr hWnd = NativeMethods.GetForegroundWindow();
@@ -251,26 +273,14 @@ namespace IMECursor
 
             bool isTaskbar = IsTaskbarOrSystemWindow(hWnd);
 
-            // 포커스가 시스템(작업표시줄)과 일반 앱 간에 전환될 때 IME 상태 동기화 처리
             if (hWnd != _currentHwnd)
             {
                 bool wasTaskbar = IsTaskbarOrSystemWindow(_currentHwnd);
 
-                if (isTaskbar && !wasTaskbar && _lastState != (ImeState.State)(-1))
-                {
-                    ImeState.SetHangulState(hWnd, ImeState.IsHangul(_lastState));
-                }
-                else if (!isTaskbar && wasTaskbar && hWnd == _lastForegroundHwnd && _lastState != (ImeState.State)(-1))
-                {
-                    ImeState.SetHangulState(hWnd, ImeState.IsHangul(_lastState));
-                }
+                if (isTaskbar && !wasTaskbar && _lastState != (ImeState.State)(-1)) { ImeState.SetHangulState(hWnd, ImeState.IsHangul(_lastState)); }
+                else if (!isTaskbar && wasTaskbar && hWnd == _lastForegroundHwnd && _lastState != (ImeState.State)(-1)) { ImeState.SetHangulState(hWnd, ImeState.IsHangul(_lastState)); }
 
-                if (!isTaskbar)
-                {
-                    _lastForegroundHwnd = hWnd;
-                    _showMiniIndicator = IsTargetProcess(hWnd); // 특정 앱(엑셀,한글) 활성화 여부 확인
-                }
-
+                if (!isTaskbar) { _lastForegroundHwnd = hWnd; _showMiniIndicator = IsTargetProcess(hWnd); }
                 _currentHwnd = hWnd;
             }
 
@@ -280,30 +290,18 @@ namespace IMECursor
             {
                 _lastState = currentState;
                 ApplyState(currentState);
-
-                if (isTaskbar && _lastForegroundHwnd != IntPtr.Zero)
-                {
-                    ImeState.SetHangulState(_lastForegroundHwnd, ImeState.IsHangul(currentState));
-                }
+                if (isTaskbar && _lastForegroundHwnd != IntPtr.Zero) { ImeState.SetHangulState(_lastForegroundHwnd, ImeState.IsHangul(currentState)); }
             }
 
-            // 미니 인디케이터(작은 원)의 실시간 위치 추적 및 출력
             if (NativeMethods.GetCursorPos(out NativeMethods.POINT pt))
             {
                 if (_showMiniIndicator && _enableMiniIndicator)
                 {
-                    int cursorH = NativeMethods.GetSystemMetrics(NativeMethods.SM_CYCURSOR) is int cy and > 0 ? cy : 32;
-                    float ratio = cursorH / 32f;
-
-                    // 💡 [커스텀 가이드 4-2: 미니 인디케이터 위치 조정]
-                    // 커서 좌표(pt.X, pt.Y)로부터 얼마나 떨어져서 원을 그릴지 오프셋(offset)을 결정합니다.
-                    // (6 * ratio), (24 * ratio) 값을 늘리거나 줄여서 위치를 이동시킬 수 있습니다.
-                    UpdateLayeredIndicator(_currentDotColor, pt.X + (int)(6 * ratio), pt.Y + (int)(24 * ratio));
+                    float ratio = (NativeMethods.GetSystemMetrics(NativeMethods.SM_CYCURSOR) is int cy and > 0 ? cy : 32) / 32f;
+                    // AppConfig에서 지정한 오프셋 위치를 사용합니다.
+                    UpdateLayeredIndicator(_currentDotColor, pt.X + (int)(AppConfig.IndicatorOffsetX * ratio), pt.Y + (int)(AppConfig.IndicatorOffsetY * ratio));
                 }
-                else
-                {
-                    UpdateLayeredIndicator(Color.Transparent, -10000, -10000); // 화면 밖으로 치움
-                }
+                else { UpdateLayeredIndicator(Color.Transparent, -10000, -10000); }
             }
         }
 
@@ -331,39 +329,14 @@ namespace IMECursor
 
             _currentDotColor = assets.DotColor;
 
-            try
-            {
-                if (_trayIcon.Icon == null || _trayIcon.Icon.Handle != assets.TrayIcon.Handle)
-                {
-                    _trayIcon.Icon = assets.TrayIcon;
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-                _trayIcon.Icon = assets.TrayIcon;
-            }
+            try { if (_trayIcon.Icon == null || _trayIcon.Icon.Handle != assets.TrayIcon.Handle) _trayIcon.Icon = assets.TrayIcon; }
+            catch (ObjectDisposedException) { _trayIcon.Icon = assets.TrayIcon; }
 
-            // 전역 시스템 커서 슬롯(OCR_NORMAL 등)을 캐싱된 이미지 핸들로 강제 교체
             ReplaceSystemCursor(NativeMethods.CopyIcon(assets.Arrow), NativeMethods.OCR_NORMAL);
             ReplaceSystemCursor(NativeMethods.CopyIcon(assets.IBeam), NativeMethods.OCR_IBEAM);
-            //ReplaceSystemCursor(NativeMethods.CopyIcon(assets.Cross), NativeMethods.OCR_CROSS);
-            //ReplaceSystemCursor(NativeMethods.CopyIcon(assets.SizeWE), NativeMethods.OCR_SIZEWE);
-            //ReplaceSystemCursor(NativeMethods.CopyIcon(assets.SizeNS), NativeMethods.OCR_SIZENS);
-            //ReplaceSystemCursor(NativeMethods.CopyIcon(assets.SizeNWSE), NativeMethods.OCR_SIZENWSE);
-            //ReplaceSystemCursor(NativeMethods.CopyIcon(assets.SizeNESW), NativeMethods.OCR_SIZENESW);
-            //ReplaceSystemCursor(NativeMethods.CopyIcon(assets.SizeAll), NativeMethods.OCR_SIZEALL);
 
-            string desc = state switch
-            {
-                ImeState.State.EnglishLower => "영어 소문자 [e]",
-                ImeState.State.EnglishUpper => "영어 대문자 [E]",
-                ImeState.State.Hangul => "한국어 [K]",
-                ImeState.State.PaliLower => "빨리어 소문자 [p]",
-                ImeState.State.PaliUpper => "빨리어 대문자 [P]",
-                _ => state.ToString()
-            };
-            _trayIcon.Text = $"IME Cursor: {desc}";
-            _statusMenuItem.Text = $"현재상태: {desc}";
+            _trayIcon.Text = $"IME Cursor: {assets.Description}";
+            _statusMenuItem.Text = $"현재상태: {assets.Description}";
         }
 
         private static void ReplaceSystemCursor(IntPtr hNew, uint cursorId)
@@ -376,13 +349,7 @@ namespace IMECursor
         {
             bool needsUpdate = false;
 
-            if (color != _lastIndicatorColor)
-            {
-                _lastIndicatorColor = color;
-                if (color != Color.Transparent) BakeIndicatorBuffer(color);
-                needsUpdate = true;
-            }
-
+            if (color != _lastIndicatorColor) { _lastIndicatorColor = color; if (color != Color.Transparent) BakeIndicatorBuffer(color); needsUpdate = true; }
             if (x != _lastIndicatorX || y != _lastIndicatorY) { _lastIndicatorX = x; _lastIndicatorY = y; needsUpdate = true; }
             if (!needsUpdate) return;
 
@@ -395,8 +362,7 @@ namespace IMECursor
             {
                 if (_indicatorMemDc != IntPtr.Zero)
                 {
-                    destPt.X = -10000; destPt.Y = -10000;
-                    bf.SourceConstantAlpha = 0;
+                    destPt.X = -10000; destPt.Y = -10000; bf.SourceConstantAlpha = 0;
                     IntPtr sDc = NativeMethods.GetDC(IntPtr.Zero);
                     _ = NativeMethods.UpdateLayeredWindow(this.Handle, sDc, ref destPt, ref sz, _indicatorMemDc, ref srcPt, 0, ref bf, 2);
                     _ = NativeMethods.ReleaseDC(IntPtr.Zero, sDc);
@@ -420,10 +386,11 @@ namespace IMECursor
                 g.SmoothingMode = SmoothingMode.AntiAlias; g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.Clear(Color.Transparent);
 
-                // 💡 [커스텀 가이드 4-1: 미니 인디케이터 디자인(크기/모양) 조정]
-                // RectangleF 파라미터 (X좌표, Y좌표, 너비, 높이)를 조정하여 원의 크기를 키우거나 줄일 수 있습니다.
-                // 펜 두께(penColor, 1.0f) 부분도 조정 가능합니다.
-                RectangleF rect = new(3.0f, 3.0f, 10.0f, 10.0f);
+                // AppConfig에서 지정한 원의 크기를 적용하여 16x16 중앙에 정렬합니다.
+                float size = AppConfig.IndicatorSize;
+                float offset = (16.0f - size) / 2.0f;
+                RectangleF rect = new(offset, offset, size, size);
+
                 using SolidBrush brush = new(color); g.FillEllipse(brush, rect);
                 Color penColor = (color == Color.White) ? Color.Black : (color == Color.Black ? Color.White : Color.Black);
                 using Pen pen = new(penColor, 1.0f) { Alignment = PenAlignment.Inset }; g.DrawEllipse(pen, rect);
@@ -476,47 +443,6 @@ namespace IMECursor
             return BitmapToCursor(bmp, (int)cx, (int)(16f * sy));
         }
 
-
-        /* private static IntPtr CreateDynamicCrossCursor(Color color, int w, int h)
-        {
-            using Bitmap bmp = new(w, h); using Graphics g = Graphics.FromImage(bmp); g.Clear(Color.Transparent); g.SmoothingMode = SmoothingMode.AntiAlias;
-            float sx = w / 32f, sy = h / 32f; float lx = 7f * sx, rx = 25f * sx, cx = 16f * sx, ty = 7f * sy, by = 25f * sy, cy = 16f * sy;
-            using Pen outPen = new(Color.Black, 7.0f * sx) { StartCap = LineCap.Flat, EndCap = LineCap.Flat }; g.DrawLine(outPen, lx, cy, rx, cy); g.DrawLine(outPen, cx, ty, cx, by);
-            using Pen inPen = new(color, 3.0f * sx) { StartCap = LineCap.Flat, EndCap = LineCap.Flat }; g.DrawLine(inPen, lx, cy, rx, cy); g.DrawLine(inPen, cx, ty, cx, by);
-            return BitmapToCursor(bmp, (int)cx, (int)cy);
-        }
-
-        private static IntPtr CreateDynamicResizeCursor(Color color, int w, int h, float angle)
-        {
-            using Bitmap bmp = new(w, h); using Graphics g = Graphics.FromImage(bmp); g.Clear(Color.Transparent); g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TranslateTransform(w / 2f, h / 2f); g.RotateTransform(angle); g.TranslateTransform(-w / 2f, -h / 2f);
-            float sx = w / 32f, sy = h / 32f;
-            using Pen outPen = new(Color.Black, 3.5f * sx) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-            using Pen inPen = new(color, 1.5f * sx) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-            g.DrawLine(outPen, 8 * sx, 16 * sy, 24 * sx, 16 * sy); g.DrawLine(inPen, 8 * sx, 16 * sy, 24 * sx, 16 * sy);
-            PointF[] leftArrow = [new(2 * sx, 16 * sy), new(8 * sx, 12 * sy), new(8 * sx, 20 * sy)]; PointF[] rightArrow = [new(30 * sx, 16 * sy), new(24 * sx, 12 * sy), new(24 * sx, 20 * sy)];
-            using Brush brush = new SolidBrush(color); using Pen polyOutPen = new(Color.Black, 1.5f * sx) { LineJoin = LineJoin.Round };
-            g.FillPolygon(brush, leftArrow); g.DrawPolygon(polyOutPen, leftArrow); g.FillPolygon(brush, rightArrow); g.DrawPolygon(polyOutPen, rightArrow);
-            g.ResetTransform(); return BitmapToCursor(bmp, (int)(w / 2f), (int)(h / 2f));
-        }
-
-        private static IntPtr CreateDynamicSizeAllCursor(Color color, int w, int h)
-        {
-            using Bitmap bmp = new(w, h); using Graphics g = Graphics.FromImage(bmp); g.Clear(Color.Transparent); g.SmoothingMode = SmoothingMode.AntiAlias;
-            float sx = w / 32f, sy = h / 32f;
-            void DrawDoubleArrow(float angle)
-            {
-                g.TranslateTransform(w / 2f, h / 2f); g.RotateTransform(angle); g.TranslateTransform(-w / 2f, -h / 2f);
-                using Pen outPen = new(Color.Black, 3.5f * sx) { StartCap = LineCap.Round, EndCap = LineCap.Round }; using Pen inPen = new(color, 1.5f * sx) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-                g.DrawLine(outPen, 8 * sx, 16 * sy, 24 * sx, 16 * sy); g.DrawLine(inPen, 8 * sx, 16 * sy, 24 * sx, 16 * sy);
-                PointF[] leftArrow = [new(2 * sx, 16 * sy), new(8 * sx, 12 * sy), new(8 * sx, 20 * sy)]; PointF[] rightArrow = [new(30 * sx, 16 * sy), new(24 * sx, 12 * sy), new(24 * sx, 20 * sy)];
-                using Brush brush = new SolidBrush(color); using Pen polyOutPen = new(Color.Black, 1.5f * sx) { LineJoin = LineJoin.Round };
-                g.FillPolygon(brush, leftArrow); g.DrawPolygon(polyOutPen, leftArrow); g.FillPolygon(brush, rightArrow); g.DrawPolygon(polyOutPen, rightArrow);
-                g.ResetTransform();
-            }
-            DrawDoubleArrow(0f); DrawDoubleArrow(90f);
-            return BitmapToCursor(bmp, (int)(w / 2f), (int)(h / 2f));
-        } */
         private static IntPtr BitmapToCursor(Bitmap bmp, int hotX, int hotY)
         {
             IntPtr hBmpColor = bmp.GetHbitmap(); IntPtr hBmpMask = NativeMethods.CreateBitmap(bmp.Width, bmp.Height, 1, 1, IntPtr.Zero);
@@ -530,23 +456,27 @@ namespace IMECursor
         {
             using Bitmap bmp = new(32, 32); using Graphics g = Graphics.FromImage(bmp); g.SmoothingMode = SmoothingMode.AntiAlias; g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             using SolidBrush bgBrush = new(bgColor); g.FillRectangle(bgBrush, 0, 0, 32, 32);
-            string fontName = (text is "p" or "e") ? "Segoe Print" : "Segoe UI Black";
-            float fontSize = text switch { "K" => 29F, "E" or "P" => 32F, "e" or "p" => 31F, _ => 29F };
+
+            // 특정 글자(p, e)에 하드코딩 되어있던 로직을, 대소문자 판별을 통한 범용 로직으로 개선했습니다.
+            bool isLower = !string.IsNullOrEmpty(text) && char.IsLower(text[0]);
+            string fontName = isLower ? "Segoe Print" : "Segoe UI Black";
+            float fontSize = isLower ? 31F : 32F;
+            float xOff = -2.0f;
+            float yOff = isLower ? -5.0f : -3.5f;
+
             using Font font = new(fontName, fontSize, FontStyle.Bold, GraphicsUnit.Pixel); using SolidBrush textBrush = new(textColor);
             StringFormat sf = new() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            float xOff = -2.0f, yOff = -3.5f;
-            if (text is "p" or "e")
+
+            if (isLower)
             {
-                yOff = text == "p" ? -6.5f : -4.0f; xOff = -1.5f;
-                g.DrawString(text, font, textBrush, new RectangleF(xOff, yOff, 36f, 36f), sf); g.DrawString(text, font, textBrush, new RectangleF(xOff + 1.0f, yOff, 36f, 36f), sf); g.DrawString(text, font, textBrush, new RectangleF(xOff, yOff + 1.0f, 36f, 36f), sf); g.DrawString(text, font, textBrush, new RectangleF(xOff + 1.0f, yOff + 1.0f, 36f, 36f), sf); g.DrawString(text, font, textBrush, new RectangleF(xOff + 0.5f, yOff + 0.5f, 36f, 36f), sf);
+                g.DrawString(text, font, textBrush, new RectangleF(xOff, yOff, 36f, 36f), sf); g.DrawString(text, font, textBrush, new RectangleF(xOff + 1.0f, yOff, 36f, 36f), sf);
+                g.DrawString(text, font, textBrush, new RectangleF(xOff, yOff + 1.0f, 36f, 36f), sf); g.DrawString(text, font, textBrush, new RectangleF(xOff + 1.0f, yOff + 1.0f, 36f, 36f), sf);
+                g.DrawString(text, font, textBrush, new RectangleF(xOff + 0.5f, yOff + 0.5f, 36f, 36f), sf);
             }
             else { g.DrawString(text, font, textBrush, new RectangleF(xOff, yOff, 36f, 36f), sf); }
             IntPtr hIcon = bmp.GetHicon(); Icon icon = (Icon)Icon.FromHandle(hIcon).Clone(); NativeMethods.DestroyIcon(hIcon); return icon;
         }
 
-        // 💡 [커스텀 가이드 5: 특정 프로그램(Excel, 한글) 예외 처리 및 로직 확장]
-        // 미니 인디케이터를 띄울 타겟 프로세스의 이름을 지정합니다. (대소문자 무관)
-        // 예: name.Equals("winword", StringComparison.OrdinalIgnoreCase) 를 추가하면 MS Word에서도 작동합니다.
         private static bool IsTargetProcess(IntPtr hWnd)
         {
             if (hWnd == IntPtr.Zero) return false;
@@ -555,7 +485,12 @@ namespace IMECursor
             try
             {
                 using var proc = System.Diagnostics.Process.GetProcessById((int)pid); string name = proc.ProcessName;
-                return name.Equals("excel", StringComparison.OrdinalIgnoreCase) || name.Equals("hwp", StringComparison.OrdinalIgnoreCase);
+                // AppConfig의 타겟 배열을 순회하며 일치 여부를 검사합니다.
+                foreach (string targetApp in AppConfig.IndicatorTargetApps)
+                {
+                    if (name.Equals(targetApp, StringComparison.OrdinalIgnoreCase)) return true;
+                }
+                return false;
             }
             catch { return false; }
         }
@@ -565,7 +500,6 @@ namespace IMECursor
         private void ClearCaches()
         {
             if (_trayIcon != null) _trayIcon.Icon = null;
-
             foreach (var asset in _assetCache.Values) asset.Dispose();
             _assetCache.Clear();
         }
@@ -575,18 +509,10 @@ namespace IMECursor
             if (disposing)
             {
                 SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
-
                 if (_trayIcon != null) _trayIcon.Visible = false;
-                _stateTimer?.Stop();
-                _stateTimer?.Dispose();
-                _trayIcon?.Dispose();
-                _contextMenu?.Dispose();
+                _stateTimer?.Stop(); _stateTimer?.Dispose(); _trayIcon?.Dispose(); _contextMenu?.Dispose();
             }
-
-            ClearCaches();
-            RestoreDefaults();
-            CleanUpIndicatorGdi();
-            base.Dispose(disposing);
+            ClearCaches(); RestoreDefaults(); CleanUpIndicatorGdi(); base.Dispose(disposing);
         }
     }
 
@@ -595,8 +521,8 @@ namespace IMECursor
     // =========================================================================
     internal static class ImeState
     {
-        public enum State { EnglishLower, EnglishUpper, Hangul, PaliLower, PaliUpper }
-        private const ushort PALI_DEVICE_ID = 0xF0C0;
+        // 범용적 사용을 위해 PaliLower/Upper 명칭을 CustomLangLower/Upper 로 일반화했습니다.
+        public enum State { EnglishLower, EnglishUpper, Hangul, CustomLangLower, CustomLangUpper }
 
         public static bool IsHangul(State state) => state == State.Hangul;
 
@@ -604,8 +530,7 @@ namespace IMECursor
         {
             bool capsOn = (NativeMethods.GetKeyState(NativeMethods.VK_CAPITAL) & 0x0001) != 0;
 
-            if (foregroundHwnd == IntPtr.Zero)
-                return capsOn ? State.EnglishUpper : State.EnglishLower;
+            if (foregroundHwnd == IntPtr.Zero) return capsOn ? State.EnglishUpper : State.EnglishLower;
 
             uint threadId = NativeMethods.GetWindowThreadProcessId(foregroundHwnd, out _);
             IntPtr focusWnd = foregroundHwnd;
@@ -613,35 +538,20 @@ namespace IMECursor
             NativeMethods.GUITHREADINFO gti = new() { cbSize = Marshal.SizeOf<NativeMethods.GUITHREADINFO>() };
             if (NativeMethods.GetGUIThreadInfo(threadId, ref gti))
             {
-                if (gti.hwndFocus != IntPtr.Zero)
-                {
-                    focusWnd = gti.hwndFocus;
-                    threadId = NativeMethods.GetWindowThreadProcessId(focusWnd, out _);
-                }
-                else if (gti.hwndActive != IntPtr.Zero)
-                {
-                    focusWnd = gti.hwndActive;
-                    threadId = NativeMethods.GetWindowThreadProcessId(focusWnd, out _);
-                }
+                if (gti.hwndFocus != IntPtr.Zero) { focusWnd = gti.hwndFocus; threadId = NativeMethods.GetWindowThreadProcessId(focusWnd, out _); }
+                else if (gti.hwndActive != IntPtr.Zero) { focusWnd = gti.hwndActive; threadId = NativeMethods.GetWindowThreadProcessId(focusWnd, out _); }
             }
 
-            // 💡 [커스텀 가이드 1: Pali어 이외의 다른 언어 자판 추가]
-            // 현재는 devId == PALI_DEVICE_ID (0xF0C0) 만을 Pali 상태로 취급합니다.
-            // 중국어(예: langId 0x0804) 등도 같은 색상/로직을 태우려면 아래처럼 확장하세요.
-            // 
-            // ushort langId = (ushort)(NativeMethods.GetKeyboardLayout(threadId).ToInt64() & 0xFFFF);
-            // if (devId == PALI_DEVICE_ID || langId == 0x0804) 
-            //     return capsOn ? State.PaliUpper : State.PaliLower;
+            // AppConfig에 정의된 Device ID(상위 16비트) 또는 Lang ID(하위 16비트) 중 하나라도 일치하면 Custom 언어로 처리
+            long hklValue = NativeMethods.GetKeyboardLayout(threadId).ToInt64();
+            ushort devId = (ushort)((hklValue >> 16) & 0xFFFF);
+            ushort langId = (ushort)(hklValue & 0xFFFF);
 
-            ushort devId = (ushort)((NativeMethods.GetKeyboardLayout(threadId).ToInt64() >> 16) & 0xFFFF);
-            if (devId == PALI_DEVICE_ID)
-                return capsOn ? State.PaliUpper : State.PaliLower;
+            if (devId == AppConfig.CustomLang_DeviceId || langId == AppConfig.CustomLang_LangId)
+                return capsOn ? State.CustomLangUpper : State.CustomLangLower;
 
             bool isHangul = CheckHangul(focusWnd);
-            if (!isHangul && focusWnd != foregroundHwnd)
-            {
-                isHangul = CheckHangul(foregroundHwnd);
-            }
+            if (!isHangul && focusWnd != foregroundHwnd) isHangul = CheckHangul(foregroundHwnd);
 
             return isHangul ? State.Hangul : (capsOn ? State.EnglishUpper : State.EnglishLower);
         }
@@ -649,13 +559,11 @@ namespace IMECursor
         private static bool CheckHangul(IntPtr hWnd)
         {
             if (hWnd == IntPtr.Zero) return false;
-
             IntPtr hImeWnd = NativeMethods.ImmGetDefaultIMEWnd(hWnd);
             if (hImeWnd != IntPtr.Zero)
             {
                 IntPtr result = IntPtr.Zero;
-                NativeMethods.SendMessageTimeout(hImeWnd, NativeMethods.WM_IME_CONTROL,
-                    (IntPtr)NativeMethods.IMC_GETCONVERSIONMODE, IntPtr.Zero, NativeMethods.SMTO_ABORTIFHUNG, 20, out result);
+                NativeMethods.SendMessageTimeout(hImeWnd, NativeMethods.WM_IME_CONTROL, (IntPtr)NativeMethods.IMC_GETCONVERSIONMODE, IntPtr.Zero, NativeMethods.SMTO_ABORTIFHUNG, 20, out result);
                 if (result != IntPtr.Zero) return ((uint)result.ToInt64() & NativeMethods.IME_CMODE_NATIVE) != 0;
             }
 
@@ -672,35 +580,27 @@ namespace IMECursor
         public static void SetHangulState(IntPtr hWnd, bool setHangul)
         {
             if (hWnd == IntPtr.Zero) return;
-
             uint threadId = NativeMethods.GetWindowThreadProcessId(hWnd, out _);
             IntPtr targetWnd = hWnd;
-
             NativeMethods.GUITHREADINFO gti = new() { cbSize = Marshal.SizeOf<NativeMethods.GUITHREADINFO>() };
             if (NativeMethods.GetGUIThreadInfo(threadId, ref gti))
             {
                 if (gti.hwndFocus != IntPtr.Zero) targetWnd = gti.hwndFocus;
                 else if (gti.hwndActive != IntPtr.Zero) targetWnd = gti.hwndActive;
             }
-
             IntPtr hImeWnd = NativeMethods.ImmGetDefaultIMEWnd(targetWnd);
             if (hImeWnd == IntPtr.Zero) hImeWnd = NativeMethods.ImmGetDefaultIMEWnd(hWnd);
 
             if (hImeWnd != IntPtr.Zero)
             {
-                NativeMethods.SendMessageTimeout(hImeWnd, NativeMethods.WM_IME_CONTROL,
-                    (IntPtr)NativeMethods.IMC_GETCONVERSIONMODE, IntPtr.Zero, NativeMethods.SMTO_ABORTIFHUNG, 20, out IntPtr result);
-
+                NativeMethods.SendMessageTimeout(hImeWnd, NativeMethods.WM_IME_CONTROL, (IntPtr)NativeMethods.IMC_GETCONVERSIONMODE, IntPtr.Zero, NativeMethods.SMTO_ABORTIFHUNG, 20, out IntPtr result);
                 uint mode = (uint)result.ToInt64();
                 bool isHangul = (mode & NativeMethods.IME_CMODE_NATIVE) != 0;
 
                 if (isHangul != setHangul)
                 {
-                    if (setHangul) mode |= NativeMethods.IME_CMODE_NATIVE;
-                    else mode &= ~NativeMethods.IME_CMODE_NATIVE;
-
-                    NativeMethods.SendMessageTimeout(hImeWnd, NativeMethods.WM_IME_CONTROL,
-                        (IntPtr)NativeMethods.IMC_SETCONVERSIONMODE, (IntPtr)mode, NativeMethods.SMTO_ABORTIFHUNG, 20, out _);
+                    if (setHangul) mode |= NativeMethods.IME_CMODE_NATIVE; else mode &= ~NativeMethods.IME_CMODE_NATIVE;
+                    NativeMethods.SendMessageTimeout(hImeWnd, NativeMethods.WM_IME_CONTROL, (IntPtr)NativeMethods.IMC_SETCONVERSIONMODE, (IntPtr)mode, NativeMethods.SMTO_ABORTIFHUNG, 20, out _);
                 }
             }
         }
@@ -738,12 +638,8 @@ namespace IMECursor
 
         [LibraryImport("user32.dll")] public static partial int GetSystemMetrics(int nIndex);
 
-        [LibraryImport("user32.dll", EntryPoint = "SendMessageW")]
-        public static partial IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-        [LibraryImport("user32.dll", EntryPoint = "SendMessageTimeoutW")]
-        public static partial IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam, uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
-
+        [LibraryImport("user32.dll", EntryPoint = "SendMessageW")] public static partial IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        [LibraryImport("user32.dll", EntryPoint = "SendMessageTimeoutW")] public static partial IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam, uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
         [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool SetSystemCursor(IntPtr hcur, uint id);
         [LibraryImport("user32.dll")] public static partial IntPtr CopyIcon(IntPtr hIcon);
         [LibraryImport("user32.dll")] public static partial IntPtr CreateIconIndirect(ref ICONINFO iconinfo);

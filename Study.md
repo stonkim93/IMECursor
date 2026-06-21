@@ -80,6 +80,8 @@
 
 > 🛑 따라서 `MainForm.Dispose()`나 `CleanUpIndicatorGdi()` 함수 내부를 보면 `DeleteObject`, `DestroyCursor`, `DeleteDC` 같은 **C/C++ 스타일의 API 호출**을 통해 수동으로 윈도우 자원을 파괴하고 있습니다. 이는 장시간 켜두는 백그라운드 유틸리티에서 프로그램이 뻗는(Crash) 현상을 막기 위한 <span style="color:#1E8449">**필수 방어 로직**</span>입니다.
 
+>🛡️ 전역 상태 롤백 안전망 (Global State Rollback): > 이 프로그램은 윈도우 OS의 기본 마우스 커서를 강제로 덮어씌웁니다. 만약 프로그램이 예기치 못한 에러로 크래시(Crash)될 경우, 마우스 커서가 변경된 채로 영원히 굳어버릴 위험이 있습니다. 이를 막기 위해 Program.cs의 진입점(Main)에 전역 예외 처리기(UnhandledException, ProcessExit)를 달아두어, 프로세스가 죽는 최후의 순간에도 OS 기본 커서로 원상 복구(RestoreDefaults)하도록 철저히 설계되어 있습니다.
+
 ---
 
 ## 🪟 2. Windows 11의 내부 작동 원리
@@ -298,6 +300,18 @@ string trayTextHangul = "ㄱ"; // 트레이 아이콘에 각인될 단어 변경
 | 🟡 Yellow | 노란색 | `#FFCC00` | (255, 204, 0) | 일본어 / 중국어 등 아시아권 언어 |
 | 🟣 Purple | 보라색 | `#AF52DE` | (175, 82, 222) | 프랑스어 / 독일어 등 유럽권 언어 |
 | 🔘 Cyan | 청록색 | `#32D7C2` | (50, 215, 194) | 기타 다국어 확장용 |
+
+
+>💡 트레이 아이콘 테마 독립 제어 (꿀팁)
+>
+>마우스 포인터의 색상은 GetColorForState()에서 결정되지만, 시스템 트레이 아이콘의 텍스트와 배경색은 BakeAllAssets() 메서드 내부에 별도로 분리되어 있습니다. 포인터는 주황색으로 하되 트레이 아이콘 배경은 검은색으로 유지하여 가독성을 높이는 등, 두 UI의 테마를 독립적으로 커스텀할 수 있습니다.
+
+```csharp
+// MainForm.cs -> BakeAllAssets() 내부
+string iconText = state switch { ImeState.State.Hangul => "K", _ => "e" };
+Color bgColor = state switch { ImeState.State.Hangul => Color.Red, _ => Color.Black };
+Color txtColor = state switch { ImeState.State.Hangul => Color.White, _ => Color.White };
+```
 
 ### ⏱️ 4.2 타이머 감지 주기 (Polling Interval) 조정
 
