@@ -14,41 +14,35 @@ namespace IMECursor
 {
     // =========================================================================
     // ⚙️ [사용자 커스텀 환경 설정] (AppConfig)
-    // 아래의 값들만 변경하면 프로그램 전체의 디자인, 속도, 타겟 프로그램이 변경됩니다.
     // =========================================================================
     internal static class AppConfig
     {
         // 1) 타이머 감지 주기 (Polling Interval)
-        // 기본값: 15 (15ms, 초당 약 66회). 배터리 절약이 필요하면 25~30으로 늘리세요.
         public const int PollingInterval = 15;
 
         // 2) 미니 인디케이터를 띄울 타겟 프로그램 지정 (반드시 소문자로 입력)
-        // 예: MS Word를 추가하려면 "winword"를 배열에 추가합니다.
         public static readonly string[] IndicatorTargetApps = { "excel", "hwp" };
 
-        // 3) 미니 인디케이터 디자인 및 위치
-        public const float IndicatorSize = 10.0f; // 작은 원의 크기 (기본 10.0, 최대 14.0)
-        public const int IndicatorOffsetX = 6;    // 마우스 포인터 끝점에서 X축 떨어진 거리
-        public const int IndicatorOffsetY = 24;   // 마우스 포인터 끝점에서 Y축 떨어진 거리
+        // 3) 미니 인디케이터 디자인 및 위치 (67.5도 중심축 수학적 정렬 완료)
+        public const float IndicatorSize = 8.0f;       // 저해상도 비대화 방지를 위해 8.0으로 최적화
+        public const float IndicatorOffsetX = 9.5f;    // 중심축 X좌표 (Tip으로부터의 거리)
+        public const float IndicatorOffsetY = 22.9f;   // 중심축 Y좌표 (OffsetX * 2.4142 기울기 완벽 적용)
 
-        // 4) 확장 언어 (Custom Language) 식별 ID (기존 Pali어 대체용)
-        // - 상위 16비트(Device ID)를 쓰는 특수 자판 (예: Pali어 = 0xF0C0)
+        // 4) 확장 언어 (Custom Language) 식별 ID
         public const ushort CustomLang_DeviceId = 0xF0C0;
-        // - 하위 16비트(LANGID)를 쓰는 일반 국가 자판 (예: 중국어 간체 = 0x0804, 프랑스어 = 0x040C)
-        // 일반 자판을 감지하려면 0x0000 대신 해당 코드를 입력하세요.
         public const ushort CustomLang_LangId = 0x0000;
 
         // 5) 상태별 색상 및 트레이 텍스트 테마 설정 구조체
         public struct Theme
         {
-            public Color PointerColor;   // 마우스 포인터 및 작은 원의 색상
-            public Color TrayBgColor;    // 트레이 아이콘의 배경 사각형 색상
-            public Color TrayTextColor;  // 트레이 아이콘의 텍스트 색상
-            public string TrayText;      // 트레이 아이콘에 표시될 1글자
-            public string Description;   // 우클릭 메뉴 및 마우스 오버 시 표시될 설명
+            public Color PointerColor;
+            public Color TrayBgColor;
+            public Color TrayTextColor;
+            public string TrayText;
+            public string Description;
         }
 
-        // 🎨 테마 딕셔너리 (여기서 모든 색상과 텍스트를 일괄 제어합니다)
+        // 🎨 테마 딕셔너리
         public static readonly Dictionary<ImeState.State, Theme> Themes = new()
         {
             [ImeState.State.EnglishLower] = new Theme
@@ -163,16 +157,11 @@ namespace IMECursor
         private int _lastIndicatorX = int.MinValue;
         private int _lastIndicatorY = int.MinValue;
 
+        // 🌟 통합 배율 제어 변수
+        private float _currentScaleRatio = 1.0f;
+        private int _indicatorCanvasSize = 16;
+
         private static readonly unsafe int s_bmiSize = sizeof(NativeMethods.BITMAPINFO);
-        private static readonly NativeMethods.BITMAPINFO s_bmi16 = new()
-        {
-            biSize = s_bmiSize,
-            biWidth = 16,
-            biHeight = -16,
-            biPlanes = 1,
-            biBitCount = 32,
-            biCompression = 0
-        };
 
         protected override CreateParams CreateParams
         {
@@ -208,8 +197,6 @@ namespace IMECursor
             SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
             BakeAllAssets();
-
-            // 설정 클래스(AppConfig)에서 타이머 주기를 가져와 동적으로 적용합니다.
             _stateTimer = new() { Interval = AppConfig.PollingInterval };
             _stateTimer.Tick += StateTimer_Tick;
         }
@@ -241,20 +228,31 @@ namespace IMECursor
         private void BakeAllAssets()
         {
             ClearCaches();
-            int w = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXCURSOR) is int cx and > 0 ? cx : 32;
-            int h = NativeMethods.GetSystemMetrics(NativeMethods.SM_CYCURSOR) is int cy and > 0 ? cy : 32;
+
+            float dpiScale = 1.0f;
+            using (Graphics g = Graphics.FromHwnd(IntPtr.Zero)) { dpiScale = g.DpiX / 96f; }
+
+            int cx = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXCURSOR);
+            float sysScale = cx > 0 ? (float)cx / 32f : 1.0f;
+
+            // 배율의 기준을 명확히 통일하여 모든 크기/거리 연산의 베이스로 사용합니다.
+            _currentScaleRatio = Math.Max(dpiScale, sysScale);
+
+            int cursorWidth = (int)Math.Ceiling(32 * _currentScaleRatio);
+            int cursorHeight = (int)Math.Ceiling(32 * _currentScaleRatio);
+            if (cursorWidth < 32) cursorWidth = 32;
+            if (cursorHeight < 32) cursorHeight = 32;
 
             foreach (ImeState.State state in Enum.GetValues(typeof(ImeState.State)))
             {
-                // AppConfig.Themes에서 해당 상태의 테마 데이터를 가져옵니다.
                 if (!AppConfig.Themes.TryGetValue(state, out AppConfig.Theme theme)) continue;
 
                 StateAssets assets = new StateAssets
                 {
                     DotColor = theme.PointerColor,
                     Description = theme.Description,
-                    Arrow = CreateDynamicArrowCursor(theme.PointerColor, w, h),
-                    IBeam = CreateDynamicIBeamCursor(theme.PointerColor, w, h),
+                    Arrow = CreateDynamicArrowCursor(theme.PointerColor, cursorWidth, cursorHeight, _currentScaleRatio),
+                    IBeam = CreateDynamicIBeamCursor(theme.PointerColor, cursorWidth, cursorHeight, _currentScaleRatio),
                     TrayIcon = CreateTrayIcon(theme.TrayText, theme.TrayBgColor, theme.TrayTextColor)
                 };
                 _assetCache[state] = assets;
@@ -297,9 +295,15 @@ namespace IMECursor
             {
                 if (_showMiniIndicator && _enableMiniIndicator)
                 {
-                    float ratio = (NativeMethods.GetSystemMetrics(NativeMethods.SM_CYCURSOR) is int cy and > 0 ? cy : 32) / 32f;
-                    // AppConfig에서 지정한 오프셋 위치를 사용합니다.
-                    UpdateLayeredIndicator(_currentDotColor, pt.X + (int)(AppConfig.IndicatorOffsetX * ratio), pt.Y + (int)(AppConfig.IndicatorOffsetY * ratio));
+                    // 🌟 [핵심 수정] 타겟 중심점을 먼저 구한 뒤, 캔버스 크기의 절반을 빼서 Top-Left 좌표로 환산합니다.
+                    // 이렇게 해야 캔버스 크기가 배율에 따라 커지더라도 '원의 중심'이 절대 위치를 이탈하지 않습니다.
+                    float targetX = pt.X + (AppConfig.IndicatorOffsetX * _currentScaleRatio);
+                    float targetY = pt.Y + (AppConfig.IndicatorOffsetY * _currentScaleRatio);
+
+                    int destX = (int)Math.Round(targetX - (_indicatorCanvasSize / 2.0f));
+                    int destY = (int)Math.Round(targetY - (_indicatorCanvasSize / 2.0f));
+
+                    UpdateLayeredIndicator(_currentDotColor, destX, destY);
                 }
                 else { UpdateLayeredIndicator(Color.Transparent, -10000, -10000); }
             }
@@ -353,7 +357,7 @@ namespace IMECursor
             if (x != _lastIndicatorX || y != _lastIndicatorY) { _lastIndicatorX = x; _lastIndicatorY = y; needsUpdate = true; }
             if (!needsUpdate) return;
 
-            NativeMethods.SIZE sz = new() { cx = 16, cy = 16 };
+            NativeMethods.SIZE sz = new() { cx = _indicatorCanvasSize, cy = _indicatorCanvasSize };
             NativeMethods.POINT srcPt = new() { X = 0, Y = 0 };
             NativeMethods.POINT destPt = new() { X = x, Y = y };
             NativeMethods.BLENDFUNCTION bf = new() { BlendOp = 0, BlendFlags = 0, SourceConstantAlpha = 255, AlphaFormat = 1 };
@@ -380,20 +384,24 @@ namespace IMECursor
             CleanUpIndicatorGdi();
             if (color == Color.Transparent) return;
 
-            using Bitmap bmp = new(16, 16, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            _indicatorCanvasSize = (int)(16 * _currentScaleRatio);
+            if (_indicatorCanvasSize % 2 != 0) _indicatorCanvasSize++; // 나눗셈 오차를 막기 위해 무조건 짝수로 맞춥니다.
+            if (_indicatorCanvasSize < 16) _indicatorCanvasSize = 16;
+
+            using Bitmap bmp = new(_indicatorCanvasSize, _indicatorCanvasSize, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (Graphics g = Graphics.FromImage(bmp))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias; g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.Clear(Color.Transparent);
 
-                // AppConfig에서 지정한 원의 크기를 적용하여 16x16 중앙에 정렬합니다.
-                float size = AppConfig.IndicatorSize;
-                float offset = (16.0f - size) / 2.0f;
+                float size = AppConfig.IndicatorSize * _currentScaleRatio;
+                float offset = (_indicatorCanvasSize - size) / 2.0f;
                 RectangleF rect = new(offset, offset, size, size);
 
                 using SolidBrush brush = new(color); g.FillEllipse(brush, rect);
                 Color penColor = (color == Color.White) ? Color.Black : (color == Color.Black ? Color.White : Color.Black);
-                using Pen pen = new(penColor, 1.0f) { Alignment = PenAlignment.Inset }; g.DrawEllipse(pen, rect);
+                float penWidth = Math.Max(1.0f, 1.0f * _currentScaleRatio);
+                using Pen pen = new(penColor, penWidth) { Alignment = PenAlignment.Inset }; g.DrawEllipse(pen, rect);
             }
 
             _indicatorScreenDc = NativeMethods.GetDC(IntPtr.Zero);
@@ -413,7 +421,15 @@ namespace IMECursor
 
         private static unsafe IntPtr CreateAlphaHBitmap(Bitmap bitmap, IntPtr hdcScreen)
         {
-            NativeMethods.BITMAPINFO bmi = (bitmap.Width == 16 && bitmap.Height == 16) ? s_bmi16 : new NativeMethods.BITMAPINFO { biSize = s_bmiSize, biWidth = bitmap.Width, biHeight = -bitmap.Height, biPlanes = 1, biBitCount = 32, biCompression = 0 };
+            NativeMethods.BITMAPINFO bmi = new NativeMethods.BITMAPINFO
+            {
+                biSize = s_bmiSize,
+                biWidth = bitmap.Width,
+                biHeight = -bitmap.Height,
+                biPlanes = 1,
+                biBitCount = 32,
+                biCompression = 0
+            };
             IntPtr pBits = IntPtr.Zero;
             IntPtr hBitmap = NativeMethods.CreateDIBSection(hdcScreen, ref bmi, 0, out pBits, IntPtr.Zero, 0);
             if (hBitmap == IntPtr.Zero) return IntPtr.Zero;
@@ -424,23 +440,51 @@ namespace IMECursor
             return hBitmap;
         }
 
-        private static IntPtr CreateDynamicArrowCursor(Color color, int w, int h)
+        private static IntPtr CreateDynamicArrowCursor(Color color, int w, int h, float scale)
         {
-            using Bitmap bmp = new(w, h); using Graphics g = Graphics.FromImage(bmp); g.Clear(Color.Transparent); g.SmoothingMode = SmoothingMode.AntiAlias;
-            float sx = w / 32f, sy = h / 32f;
-            PointF[] pts = [new(0f * sx, 0f * sy), new(0f * sx, 20f * sy), new(5f * sx, 15f * sy), new(9f * sx, 24f * sy), new(12f * sx, 23f * sy), new(8f * sx, 14f * sy), new(15f * sx, 14f * sy)];
-            using Brush brush = new SolidBrush(color); g.FillPolygon(brush, pts);
-            using Pen pen = new(Color.Black, Math.Max(1.0f, 1.2f * sx)) { LineJoin = LineJoin.Round }; g.DrawPolygon(pen, pts);
+            using Bitmap bmp = new(w, h);
+            using Graphics g = Graphics.FromImage(bmp);
+            g.Clear(Color.Transparent);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // 🌟 [수학적 완전 대칭 좌표계] 67.5도 중심축(Y = 2.4142X) 기준 반사(Reflection) 행렬 적용
+            // 길이 15.0px 윈도우 순정 크기 동기화 및 꼬리 평행선(Parallel Stem) 알고리즘 적용
+            PointF[] pts = [
+                new PointF(0.00f * scale, 0.00f * scale),    // 1. 최상단 꼭지점 (Tip)
+                new PointF(0.00f * scale, 15.00f * scale),   // 2. 왼쪽 날개 (순정 크기 15.0px 일치)
+                new PointF(4.00f * scale, 12.00f * scale),   // 3. 왼쪽 내부 꺾임점
+                new PointF(6.30f * scale, 17.54f * scale),   // 4. 꼬리(Stem) 왼쪽 하단 끝점
+                new PointF(7.95f * scale, 16.86f * scale),   // 5. 꼬리(Stem) 오른쪽 하단 끝점
+                new PointF(5.66f * scale, 11.31f * scale),   // 6. 오른쪽 내부 꺾임점 (대칭 완벽 매핑)
+                new PointF(10.61f * scale, 10.61f * scale)   // 7. 오른쪽 날개 (정밀 45도 매핑, 길이 15.0px 일치)
+            ];
+
+            using Brush brush = new SolidBrush(color);
+            g.FillPolygon(brush, pts);
+
+            // 테두리가 바깥으로 번지는 현상을 막기 위해 100% 렌더링 시 굵기 1.0f로 가장 날렵하게 고정
+            using Pen pen = new(Color.Black, Math.Max(1.0f, 1.0f * scale)) { LineJoin = LineJoin.Round };
+            g.DrawPolygon(pen, pts);
+
             return BitmapToCursor(bmp, 0, 0);
         }
 
-        private static IntPtr CreateDynamicIBeamCursor(Color color, int w, int h)
+        private static IntPtr CreateDynamicIBeamCursor(Color color, int w, int h, float scale)
         {
-            using Bitmap bmp = new(w, h); using Graphics g = Graphics.FromImage(bmp); g.Clear(Color.Transparent); g.SmoothingMode = SmoothingMode.AntiAlias;
-            float sx = w / 32f, sy = h / 32f; float lx = 11f * sx, rx = 21f * sx, cx = 16f * sx, ty = 6f * sy, by = 26f * sy;
-            using Pen outPen = new(Color.Black, 3.5f * sx) { StartCap = LineCap.Round, EndCap = LineCap.Round }; g.DrawLine(outPen, lx, ty, rx, ty); g.DrawLine(outPen, lx, by, rx, by); g.DrawLine(outPen, cx, ty, cx, by);
-            using Pen inPen = new(color, 1.5f * sx) { StartCap = LineCap.Round, EndCap = LineCap.Round }; g.DrawLine(inPen, lx, ty, rx, ty); g.DrawLine(inPen, lx, by, rx, by); g.DrawLine(inPen, cx, ty, cx, by);
-            return BitmapToCursor(bmp, (int)cx, (int)(16f * sy));
+            using Bitmap bmp = new(w, h);
+            using Graphics g = Graphics.FromImage(bmp);
+            g.Clear(Color.Transparent);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            float lx = 12f * scale, rx = 20f * scale, cx = 16f * scale, ty = 8f * scale, by = 24f * scale;
+
+            using Pen outPen = new(Color.Black, 3.5f * scale) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            g.DrawLine(outPen, lx, ty, rx, ty); g.DrawLine(outPen, lx, by, rx, by); g.DrawLine(outPen, cx, ty, cx, by);
+
+            using Pen inPen = new(color, 1.5f * scale) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            g.DrawLine(inPen, lx, ty, rx, ty); g.DrawLine(inPen, lx, by, rx, by); g.DrawLine(inPen, cx, ty, cx, by);
+
+            return BitmapToCursor(bmp, (int)cx, (int)(16f * scale));
         }
 
         private static IntPtr BitmapToCursor(Bitmap bmp, int hotX, int hotY)
@@ -457,7 +501,6 @@ namespace IMECursor
             using Bitmap bmp = new(32, 32); using Graphics g = Graphics.FromImage(bmp); g.SmoothingMode = SmoothingMode.AntiAlias; g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             using SolidBrush bgBrush = new(bgColor); g.FillRectangle(bgBrush, 0, 0, 32, 32);
 
-            // 특정 글자(p, e)에 하드코딩 되어있던 로직을, 대소문자 판별을 통한 범용 로직으로 개선했습니다.
             bool isLower = !string.IsNullOrEmpty(text) && char.IsLower(text[0]);
             string fontName = isLower ? "Segoe Print" : "Segoe UI Black";
             float fontSize = isLower ? 31F : 32F;
@@ -485,7 +528,6 @@ namespace IMECursor
             try
             {
                 using var proc = System.Diagnostics.Process.GetProcessById((int)pid); string name = proc.ProcessName;
-                // AppConfig의 타겟 배열을 순회하며 일치 여부를 검사합니다.
                 foreach (string targetApp in AppConfig.IndicatorTargetApps)
                 {
                     if (name.Equals(targetApp, StringComparison.OrdinalIgnoreCase)) return true;
@@ -521,7 +563,6 @@ namespace IMECursor
     // =========================================================================
     internal static class ImeState
     {
-        // 범용적 사용을 위해 PaliLower/Upper 명칭을 CustomLangLower/Upper 로 일반화했습니다.
         public enum State { EnglishLower, EnglishUpper, Hangul, CustomLangLower, CustomLangUpper }
 
         public static bool IsHangul(State state) => state == State.Hangul;
@@ -542,7 +583,6 @@ namespace IMECursor
                 else if (gti.hwndActive != IntPtr.Zero) { focusWnd = gti.hwndActive; threadId = NativeMethods.GetWindowThreadProcessId(focusWnd, out _); }
             }
 
-            // AppConfig에 정의된 Device ID(상위 16비트) 또는 Lang ID(하위 16비트) 중 하나라도 일치하면 Custom 언어로 처리
             long hklValue = NativeMethods.GetKeyboardLayout(threadId).ToInt64();
             ushort devId = (ushort)((hklValue >> 16) & 0xFFFF);
             ushort langId = (ushort)(hklValue & 0xFFFF);
@@ -618,7 +658,7 @@ namespace IMECursor
         public const uint IME_CMODE_NATIVE = 0x0001;
         public const uint SMTO_ABORTIFHUNG = 0x0002;
 
-        public const uint OCR_NORMAL = 32512, OCR_IBEAM = 32513, OCR_CROSS = 32515, OCR_SIZENWSE = 32642, OCR_SIZENESW = 32643, OCR_SIZEWE = 32644, OCR_SIZENS = 32645, OCR_SIZEALL = 32646;
+        public const uint OCR_NORMAL = 32512, OCR_IBEAM = 32513;
         public const uint SPI_SETCURSORS = 0x0057, SPIF_SENDCHANGE = 0x0002;
         public const int SM_CXCURSOR = 13, SM_CYCURSOR = 14;
 
