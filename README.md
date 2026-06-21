@@ -134,8 +134,8 @@ dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=
 
 | 파일명 | 용도 | 파일 크기 |
 |:---|:---|:---:|
-| [`IMECursor.zip`](https://github.com/stonkim93/IMECursor/releases/download/IMECursor__dotnet10/IMECursor.zip) | .NET10 기설치 PC | Small ( 0.25 MB ) |
-| [`IMECursor_with_dotnet10.zip`](https://github.com/stonkim93/IMECursor/releases/download/IMECursor__dotnet10/IMECursor_with_dotnet10.zip) | .NET10 미설치 PC | Big ( 43.8 MB ) |
+| [`IMECursor.zip`](https://github.com/stonkim93/IMECursor/releases/download/v1.0.0/IMECursor.zip) | .NET10 기설치 PC | Small ( 0.25 MB ) |
+| [`IMECursor_with_dotnet10.zip`](https://github.com/stonkim93/IMECursor/releases/download/v1.0.0/IMECursor_with_dotnet10.zip) | .NET10 미설치 PC | Big ( 43.8 MB ) |
 
 ### 4️⃣ 실행하기
 
