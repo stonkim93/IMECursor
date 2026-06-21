@@ -29,7 +29,7 @@
 
 | 입력 상태 (IME State) | 포인터/아이콘 색상 | 트레이 글자 |
 |:---|:---|:---:|
-| **영어 소문자** (English Lower) | $\color{gray}\blacktriangle$ White | **$\color{gray}{e}$**|
+| **영어 소문자** (English Lower) | $\color{gray}\Large\blacktriangle$ White | $\color{gray}\large\boldsymbol{e}$|
 | **영어 대문자** (English Upper) | $\color{DeepSkyBlue}\Large\blacktriangle$ DeepSkyBlue | $\color{deepskyblue}\large\textbf{E}$|
 | **한국어** (Hangul) | $\color{red}\Large\blacktriangle$ Red | $\color{red}\large\textbf{K}$|
 | **빨리어 소문자** (Pāḷi Lower) | $\color{orange}\Large\blacktriangle$ Orange | $\color{orange}\large\boldsymbol{p}$|
