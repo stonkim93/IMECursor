@@ -65,7 +65,7 @@
 
 * Windows US+Pali(Unicode) 키보드 설치 방법 : `https://www.tipitaka.org/keyboard.html`
 
-* 한국어(MS IME) ↔ Pali어 빠른 전환 : $\color{green}\textbf{Ctrl}$ + $\color{green}\textbf{Shift}$
+* 한국어(MS IME) ↔ Pali어 빠른 전환 : $\color{lime}\textbf{Ctrl}$ + $\color{lime}\textbf{Shift}$
 
 * 자판 목록에서 순환적으로 자판 선택 : $\color{blue}\textbf{WIN}$ + $\color{blue}\textbf{Space}$
 
