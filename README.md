@@ -50,7 +50,7 @@
 
     ⚠️ 한글과컴퓨터 아래한글 (`hwp.exe`)의 텍스트 입력창 안에서는 포인터가 검은색 I자로 바뀐다.
 
-- 시스템 트레이의 아이콘을 **우클릭**(또는 좌클릭)하면, (1) 현재 입력상태 표시, (2) $\color{lime}\textbf{엑셀/한글\ 작은원\ 표시}$ 활성화 옵션, (3) 종료(Exit) 버튼을 제공합니다.
+- 시스템 트레이의 아이콘을 **우클릭**(또는 좌클릭)하면, (1) 현재 입력상태 표시, (2) $\color{red}\textbf{엑셀/한글\ 작은원\ 표시}$ 활성화 옵션, (3) 종료(Exit) 버튼을 제공합니다.
 
 
 <div align="center">
@@ -65,9 +65,9 @@
 
 * Windows US+Pali(Unicode) 키보드 설치 방법 : `https://www.tipitaka.org/keyboard.html`
 
-* 한국어(MS IME) ↔ Pali어 빠른 전환 : $\color{lime}\textbf{Ctrl}$ + $\color{lime}\textbf{Shift}$
+* 한국어(MS IME) ↔ Pali어 빠른 전환 : $\color{green}\textbf{Ctrl}$ + $\color{green}\textbf{Shift}$
 
-* 자판 목록에서 순환적으로 자판 선택 : $\color{deepskyblue}\textbf{WIN}$ + $\color{deepskyblue}\textbf{Space}$
+* 자판 목록에서 순환적으로 자판 선택 : $\color{blue}\textbf{WIN}$ + $\color{blue}\textbf{Space}$
 
 * Pali어 문자배열 및 입력방법 : $\color{red}\textbf{한/영키}$(Right Alt) + ($\color{red}\textbf{A, S, D, R, T, Y, U, I, G, H, L, M, N}$)
 
@@ -84,7 +84,7 @@
 > 한글과컴퓨터의 자체 입력기 대신 MicroSoft IME를 사용하도록 전환하면, 아래한글에서도 이 프로그램이 입력 상태를 정확히 보여줍니다.
 
 * 아래한글 실행 후 상단 메뉴에서 `도구 ➔ 글자판 ➔ 글자판 바꾸기`를 클릭합니다. (단축키: <kbd>Alt</kbd> + <kbd>F2</kbd>)
-* **글자판 바꾸기** 창에서 현재 글자판 종류를 **한국어** 대신 $\color{lime}\textbf{윈도우\ 입력기}$로 변경합니다.
+* **글자판 바꾸기** 창에서 현재 글자판 종류를 **한국어** 대신 $\color{red}\textbf{윈도우\ 입력기}$로 변경합니다.
 * **글자판 자동 변경**을 해제하여 항상 윈도우 설정을 따르도록 저장하고 나옵니다.
 * 트레이 아이콘을 클릭하여, **엑셀/한글 작은원 표시**가 체크되어 있으면, 입력상태를 시각적으로 구분하기 쉽습니다.
 
